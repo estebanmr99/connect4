@@ -1,0 +1,14 @@
+#lang racket
+
+(define ROW_COUNT 7)
+(define COLUMN_COUNT 6)
+
+(define PLAYER 0)
+(define IA 1)
+
+(define EMPTY 0)
+(define PLAYER_PIECE 1)
+(define AI_PIECE 2)
+
+(define WINDOW_LENGTH 4)
+
