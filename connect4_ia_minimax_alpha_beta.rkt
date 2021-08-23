@@ -73,6 +73,86 @@
   (get-next-open-row-aux board col 0))
 
 (define (get-next-open-row-aux board col row)
-  (cond [(eq? row ROW_COUNT)]
+  (cond [(eq? row ROW_COUNT)];ACA NUNCA VA A ENTRAR
         [(eq? (get-element board row col) 0) row]
         [(< row ROW_COUNT) (get-next-open-row-aux board col (add1 row))]))
+
+#| 
+  Funcion: Indica si el movimiento que se realiza del cual recibe la posicion
+           (row,col) por parametro, es un movimiento ganador, es decir,
+           el movimiento hace posible la conexion de cuatro fichas del mismo jugador
+    Parametros: board, piece, row, col
+    Retorna: boolean
+|#
+(define (is-winning-move board piece row col)
+  (or (check-horizontal board piece row 0)
+      (or (check-vertical board piece 0 col)
+          (or (check-negative-diagonal board piece 3 0)
+              (check-positive-diagonal board piece 0 0)))))
+
+#| 
+  Funcion: Verifica de manera horizontal, en una fila especifica (row),
+           si existen cuatro fichas seguidas del mismo jugador. El parámetro
+           col siempre debe empezar en cero cuando se llama a la funcion.
+    Parametros: board, piece, row, col
+    Retorna: boolean
+|#
+(define (check-horizontal board piece row col)
+  (cond [(= (- COLUMN_COUNT 3) col) #f]
+        [(and (= (get-element board row col) piece)
+              (and (= (get-element board row (+ col 1)) piece)
+                   (and (= (get-element board row (+ col 2)) piece)
+                        (= (get-element board row (+ col 3)) piece)))) #t]
+        [else (check-horizontal board piece row (add1 col))]))
+
+#| 
+  Funcion: Verifica de manera vertical, en una columna especifica (col),
+           si existen cuatro fichas seguidas del mismo jugador. El parámetro
+           row siempre debe empezar en cero cuando se llama a la funcion.
+    Parametros: board, piece, row, col
+    Retorna: boolean
+|#
+(define (check-vertical board piece row col)
+  (cond [(= (- ROW_COUNT 3) row) #f]
+        [(and (= (get-element board row col) piece)
+              (and (= (get-element board (+ row 1) col) piece)
+                   (and (= (get-element board (+ row 2) col) piece)
+                        (= (get-element board (+ row 3) col) piece)))) #t]
+        [else (check-vertical board piece (add1 row) col)]))
+
+#| 
+  Funcion: Verifica todas las diagonales de largo mayor a cuatro para ver
+           si existen cuatro fichas seguidas del mismo jugador. El parámetro
+           col siempre debe empezar en cero y row en tres cuando se llama a la funcion.
+    Parametros: board, piece, row, col
+    Retorna: boolean
+|#
+(define (check-negative-diagonal board piece row col)
+  (cond [(= ROW_COUNT row) #f]
+        [(= (- COLUMN_COUNT 3) col) #f]
+        [(and (= (get-element board row col) piece)
+              (and (= (get-element board (- row 1) (+ col 1)) piece)
+                   (and (= (get-element board (- row 2) (+ col 2)) piece)
+                        (= (get-element board (- row 3) (+ col 3)) piece)))) #t]
+        [else (or
+               (check-negative-diagonal board piece 3 (add1 col))
+               (check-negative-diagonal board piece (add1 row) col))]))
+
+#| 
+  Funcion: Verifica todas las diagonales opuestas a la funcion check-negative-diagonal,
+           las mismas de largo mayor a cuatro, esto para ver
+           si existen cuatro fichas seguidas del mismo jugador. El parámetro
+           col y row siempre debe empezar en cero cuando se llama a la funcion.
+    Parametros: board, piece, row, col
+    Retorna: boolean
+|#
+(define (check-positive-diagonal board piece row col)
+  (cond [(= (- ROW_COUNT 3) row) #f]
+        [(= (- COLUMN_COUNT 3) col) #f]
+        [(and (= (get-element board row col) piece)
+              (and (= (get-element board (+ row 1) (+ col 1)) piece)
+                   (and (= (get-element board (+ row 2) (+ col 2)) piece)
+                        (= (get-element board (+ row 3) (+ col 3)) piece)))) #t]
+        [else (or
+               (check-positive-diagonal board piece 0 (add1 col))
+               (check-positive-diagonal board piece (add1 row) col))]))
