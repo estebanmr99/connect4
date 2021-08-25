@@ -73,7 +73,7 @@
   (get-next-open-row-aux board col 0))
 
 (define (get-next-open-row-aux board col row)
-  (cond [(eq? row ROW_COUNT)];ACA NUNCA VA A ENTRAR
+  (cond [(eq? row ROW_COUNT)]
         [(eq? (get-element board row col) 0) row]
         [(< row ROW_COUNT) (get-next-open-row-aux board col (add1 row))]))
 
@@ -156,3 +156,36 @@
         [else (or
                (check-positive-diagonal board piece 0 (add1 col))
                (check-positive-diagonal board piece (add1 row) col))]))
+
+#| 
+  Funcion: Dada una lista y un elemento retorna la cantidad de veces que se encuentra repetido
+           dicho elemento.
+    Parametros: list, any
+    Retorna: int
+|#
+(define (count list element)
+  (cond [(null? list) 0]
+        [(eq? (first list) element) (+ 1 (count (rest list) element))]
+        [else (+ 0 (count (rest list) element))]))
+
+#| 
+  Funcion: Dada una lista verifica y le pone un valor a dicha lista, la lista representa una agrupacion
+           de 4 piezas consecutivas que pueden ser horizontal, vertical o diagonal.
+    Parametros: list, int
+    Retorna: int
+|#
+(define (evaluate-window window piece)
+  (define score 0)
+  (define opp_piece PLAYER_PIECE)
+
+  (cond [(= piece PLAYER_PIECE) (set! opp_piece AI_PIECE)])
+
+  (cond [(= (count window piece) 4) (set! score (+ score 100))]
+        [(and (= (count window piece) 3) (= (count window EMPTY) 1)) (set! score (+ score 5))]
+        [(and (= (count window piece) 2) (= (count window EMPTY) 2)) (set! score (+ score 2))])
+
+  (cond [(and (= (count window opp_piece) 3) (= (count window EMPTY) 1)) (set! score (- score 4))])
+
+  score)
+
+
