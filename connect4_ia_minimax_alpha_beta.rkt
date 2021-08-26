@@ -1,8 +1,8 @@
 #lang racket
 
 ;; Constantes para el funcionamiento general del juego 
-(define ROW_COUNT 7)
-(define COLUMN_COUNT 6)
+(define ROW_COUNT 6)
+(define COLUMN_COUNT 7)
 
 (define PLAYER 0)
 (define IA 1)
@@ -14,7 +14,7 @@
 (define WINDOW_LENGTH 4)
 
 ;; Se crea una varible para el tablero con todos los valores en 0
-(define board (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0)))
+(define board (list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0)))
 
 #| 
   Funcion: Retorna el valor que se encuentra en una fila y columna en una matriz.
@@ -189,3 +189,79 @@
   score)
 
 
+
+(define (get-column board col)
+  (get-column-aux board col 0))
+
+(define (get-column-aux board col row)
+  (cond [(>= col COLUMN_COUNT) empty]
+        [(>= row ROW_COUNT) empty]
+        [else (cons (get-element board row col) (get-column-aux board col (add1 row)))])
+  )
+
+(define (get-row board row)
+  (cond [(< row 0) empty]
+        [(= row 0) (first board)]
+        [else (get-row (rest board) (- row 1))]))
+
+(define (get-diagonal board row col)
+  (cond [(>= col COLUMN_COUNT) empty]
+        [(>= row ROW_COUNT) empty]
+        [else (cons (get-element board row col) (get-diagonal board (add1 row) (add1 col)))]))
+
+(define (mirror-board board)
+  (cond [(empty? board) empty]
+        [else (cons (reverse (first board)) (mirror-board (rest board)))]))
+
+(define (slice list start length)
+  (cond [(< start 0) empty]
+        [(<= length 0) empty]
+        [(empty? list) empty]
+        [(= start 0) (cons (first list) (slice (rest list) start (- length 1)))]
+        [else (slice (rest list) (- start 1) length)]))
+
+;row y col deben empezar en cero
+;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0)) = 117
+(define (horizontal-score board piece row col)
+  (cond [(>= row ROW_COUNT) 0]
+        [(>= col (- COLUMN_COUNT 3)) (horizontal-score board piece (add1 row) 0)]
+        [else (+
+               (evaluate-window (slice (get-row board row) col WINDOW_LENGTH) piece)
+               (horizontal-score board piece row (add1 col)))]))
+
+;row y col deben empezar en cero
+;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0)) = 18
+(define (vertical-score board piece row col)
+  (cond [(>= col COLUMN_COUNT) 0]
+        [(>= row (- ROW_COUNT 3)) (vertical-score board piece 0 (add1 col))]
+        [else (+
+               (evaluate-window (slice (get-column board col) row WINDOW_LENGTH) piece)
+               (vertical-score board piece (add1 row) col))]))
+
+; no se necesita
+(define (list-score list piece)
+  (cond [(< (length list) 4) 0]
+        [(+
+          (evaluate-window (slice list 0 WINDOW_LENGTH) piece)
+          (list-score (rest list) piece))]))
+
+;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 1 1 1 1 1 1) (list 0 0 0 0 0 2) (list 0 0 0 0 0 0)) = 26
+;(list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 1 1 1 1 0 0) (list 0 0 1 1 1 2 0) (list 1 1 1 1 1 1 0) (list 0 0 0 0 0 2 0))=29
+(define (diagonal-score board piece row col)
+  (cond [(>= row (- ROW_COUNT 3)) 0]
+        [(>= col (- COLUMN_COUNT 3)) (diagonal-score board piece (add1 row) 0)]
+        [else (+
+               (evaluate-window (slice (get-diagonal board row col) 0 WINDOW_LENGTH) piece)
+               (diagonal-score board piece row (add1 col)))]))
+
+;ejemplo: (list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 1 1 1 1 0 0) (list 0 0 1 1 1 2 0) (list 1 1 1 1 1 1 0) (list 0 0 0 0 0 2 0)) = 532
+(define (score-position board piece)
+  (+
+   (+
+    (+
+     (+
+      (* (count (get-column board (round (/ COLUMN_COUNT 2))) piece) 3)
+      (horizontal-score board piece 0 0))
+     (vertical-score board piece 0 0))
+    (diagonal-score board piece 0 0))
+   (diagonal-score (mirror-board board) piece 0 0)))
