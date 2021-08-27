@@ -265,3 +265,33 @@
      (vertical-score board piece 0 0))
     (diagonal-score board piece 0 0))
    (diagonal-score (mirror-board board) piece 0 0)))
+
+
+#| 
+  Funcion: Dado un tablero devuelve todas las columnas donde se puede tirar una ficha.
+    Parametros: matrix
+    Retorna: list
+|#
+(define (get-valid-locations board)
+   (get-valid-locations-aux board 0))
+
+#| 
+  Funcion: Axiliar para ayudar a get-valid-locations con el conteo de 0 hasta COLUMN_COUNT.
+    Parametros: matrix int
+    Retorna: list
+|#
+(define (get-valid-locations-aux board col)
+  (cond [(= col COLUMN_COUNT) '()]
+        [(is-valid-location board col) (append (get-valid-locations-aux board (add1 col)) (list col))]
+        [else (get-valid-locations-aux board (add1 col))]))
+
+#| 
+  Funcion: Verifica un tablero y retona verdadero si ya no hay mas posibles jugadas o falso si todavian quedan.
+    Parametros: matrix
+    Retorna: boolean
+|#
+(define (is-terminal-node board)
+  (or (is-winning-move board PLAYER_PIECE 0 0) (is-winning-move board AI_PIECE 0 0) (= (length (get-valid-locations board)) 0)))
+
+
+
