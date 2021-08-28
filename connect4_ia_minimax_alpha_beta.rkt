@@ -13,8 +13,24 @@
 
 (define WINDOW_LENGTH 4)
 
+(define MINUS_INF -100000000000000000)
+(define INF 100000000000000000)
+
 ;; Se crea una varible para el tablero con todos los valores en 0
-(define board (list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0)))
+(define board (list (list 0 0 0 0 0 0 0)
+                    (list 0 0 0 0 0 0 0)
+                    (list 0 0 0 0 0 0 0)
+                    (list 0 0 0 0 0 0 0)
+                    (list 0 0 0 0 0 0 0)
+                    (list 0 0 0 0 0 0 0)))
+;(list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0))
+;(list (list 1 2 1 2 1 2 1) (list 2 1 2 1 2 1 2) (list 1 2 1 2 1 2 1) (list 1 2 1 2 1 2 1) (list 2 1 2 1 2 1 2) (list 1 2 1 2 1 2 1))
+#|(define board (list (list 2 2 1 2 1 2 1)
+                    (list 1 1 2 1 2 1 2)
+                    (list 1 2 1 1 1 2 1)
+                    (list 1 2 2 2 1 2 1)
+                    (list 2 1 2 2 2 1 2)
+                    (list 0 0 1 2 0 2 2)))|#
 
 #| 
   Funcion: Retorna el valor que se encuentra en una fila y columna en una matriz.
@@ -53,8 +69,8 @@
     Parametros: matrix int int int
     Retorna: matrix
 |#
-(define (drop-piece board row col piece)
-  (set-element-board board row col piece))
+(define (drop-piece row col piece)
+  (set-element-board row col piece))
 
 #| 
   Funcion: Verifica si una columna es valida para jugar.
@@ -81,7 +97,7 @@
   Funcion: Indica si el movimiento que se realiza del cual recibe la posicion
            (row,col) por parametro, es un movimiento ganador, es decir,
            el movimiento hace posible la conexion de cuatro fichas del mismo jugador
-    Parametros: board, piece, row, col
+    Parametros: matrix int int int
     Retorna: boolean
 |#
 (define (is-winning-move board piece row col)
@@ -94,7 +110,7 @@
   Funcion: Verifica de manera horizontal, en una fila especifica (row),
            si existen cuatro fichas seguidas del mismo jugador. El parámetro
            col siempre debe empezar en cero cuando se llama a la funcion.
-    Parametros: board, piece, row, col
+    Parametros: matrix int int int
     Retorna: boolean
 |#
 (define (check-horizontal board piece row col)
@@ -109,7 +125,7 @@
   Funcion: Verifica de manera vertical, en una columna especifica (col),
            si existen cuatro fichas seguidas del mismo jugador. El parámetro
            row siempre debe empezar en cero cuando se llama a la funcion.
-    Parametros: board, piece, row, col
+    Parametros: matrix int int int
     Retorna: boolean
 |#
 (define (check-vertical board piece row col)
@@ -124,7 +140,7 @@
   Funcion: Verifica todas las diagonales de largo mayor a cuatro para ver
            si existen cuatro fichas seguidas del mismo jugador. El parámetro
            col siempre debe empezar en cero y row en tres cuando se llama a la funcion.
-    Parametros: board, piece, row, col
+    Parametros: matrix int int int
     Retorna: boolean
 |#
 (define (check-negative-diagonal board piece row col)
@@ -143,7 +159,7 @@
            las mismas de largo mayor a cuatro, esto para ver
            si existen cuatro fichas seguidas del mismo jugador. El parámetro
            col y row siempre debe empezar en cero cuando se llama a la funcion.
-    Parametros: board, piece, row, col
+    Parametros: matrix int int int
     Retorna: boolean
 |#
 (define (check-positive-diagonal board piece row col)
@@ -238,12 +254,6 @@
                (evaluate-window (slice (get-column board col) row WINDOW_LENGTH) piece)
                (vertical-score board piece (add1 row) col))]))
 
-; no se necesita
-(define (list-score list piece)
-  (cond [(< (length list) 4) 0]
-        [(+
-          (evaluate-window (slice list 0 WINDOW_LENGTH) piece)
-          (list-score (rest list) piece))]))
 
 ;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 1 1 1 1 1 1) (list 0 0 0 0 0 2) (list 0 0 0 0 0 0)) = 26
 ;(list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 1 1 1 1 0 0) (list 0 0 1 1 1 2 0) (list 1 1 1 1 1 1 0) (list 0 0 0 0 0 2 0))=29
@@ -260,7 +270,7 @@
    (+
     (+
      (+
-      (* (count (get-column board (round (/ COLUMN_COUNT 2))) piece) 3)
+      (* (count (get-column board (floor (/ COLUMN_COUNT 2))) piece) 3)
       (horizontal-score board piece 0 0))
      (vertical-score board piece 0 0))
     (diagonal-score board piece 0 0))
@@ -276,7 +286,7 @@
    (get-valid-locations-aux board 0))
 
 #| 
-  Funcion: Axiliar para ayudar a get-valid-locations con el conteo de 0 hasta COLUMN_COUNT.
+  Funcion: Auxiliar para ayudar a get-valid-locations con el conteo de 0 hasta COLUMN_COUNT.
     Parametros: matrix int
     Retorna: list
 |#
@@ -285,13 +295,46 @@
         [(is-valid-location board col) (append (get-valid-locations-aux board (add1 col)) (list col))]
         [else (get-valid-locations-aux board (add1 col))]))
 
-#| 
-  Funcion: Verifica un tablero y retona verdadero si ya no hay mas posibles jugadas o falso si todavian quedan.
-    Parametros: matrix
-    Retorna: boolean
-|#
-(define (is-terminal-node board)
-  (or (is-winning-move board PLAYER_PIECE 0 0) (is-winning-move board AI_PIECE 0 0) (= (length (get-valid-locations board)) 0)))
+
+(define (random-choice list)
+  (list-ref list (random (length list))))
 
 
+(define (check-pos-max board depth alpha beta maximize max-value max-col valid-locations)
+  (cond [(empty? valid-locations) (list max-col max-value)]
+        [(>= alpha beta) (list max-col max-value)]
+        [else
+         (define col (first valid-locations))
+         (define row (get-next-open-row board col))
+         (define new-value (minimax
+                            (set-element board row col maximize)
+                            (- depth 1)
+                            alpha beta row col (if (= maximize AI_PIECE) PLAYER_PIECE AI_PIECE)))
+         (if (> (second new-value) max-value)
+             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize (second new-value) col (rest valid-locations))
+             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize max-value max-col (rest valid-locations)))]))
 
+
+(define (check-pos-min board depth alpha beta maximize max-value max-col valid-locations)
+  (cond [(empty? valid-locations) (list max-col max-value)]
+        [(>= alpha beta) (list max-col max-value)]
+        [else
+         (define col (first valid-locations))
+         (define row (get-next-open-row board col))
+         (define new-value (minimax
+                            (set-element board row col maximize)
+                            (- depth 1)
+                            alpha beta row col (if (= maximize AI_PIECE) PLAYER_PIECE AI_PIECE)))
+         (if (< (second new-value) max-value)
+             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize (second new-value) col (rest valid-locations))
+             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize max-value max-col (rest valid-locations)))]))
+
+
+(define (minimax board depth alpha beta row col maximize)
+  (define valid-locations (get-valid-locations board))
+  (cond [(= depth 0) (list "-" (score-position board AI_PIECE))]
+        [(is-winning-move board AI_PIECE row col) '("-" 100000000000000)]
+        [(is-winning-move board PLAYER_PIECE row col) '("-" -100000000000000)]
+        [(= (length valid-locations) 0) '("-" 0)] ;game over, no more valid moves
+        [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-locations) valid-locations)]
+        [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
