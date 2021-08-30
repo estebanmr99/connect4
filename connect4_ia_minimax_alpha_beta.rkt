@@ -338,3 +338,35 @@
         [(= (length valid-locations) 0) '("-" 0)] ;game over, no more valid moves
         [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-locations) valid-locations)]
         [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
+
+(define (while condition body turn)
+  (when (condition)
+    (body turn)
+    (while condition body)))
+
+(define (ask)
+  (print "Columna: ")
+    (define col (read-line (current-input-port) 'any))
+  (string->number col))
+
+(define (user-turn)
+  (define user-col (ask))
+  (define user-row (get-next-open-row board user-col))
+  (if (is-valid-location board user-col)
+      (drop-piece user-row user-col PLAYER_PIECE)
+      ((print "Por favor ingrese una columna valida") (user-turn)))
+  (list user-row user-col))
+
+(define (ai-turn)
+  (define best-move (minimax board 5 MINUS_INF INF 0 0 AI_PIECE))
+  (define ai-row (get-next-open-row board (first best-move)))
+  (drop-piece ai-row (first best-move) AI_PIECE)
+  (list ai-row (first best-move)))
+
+(define (main turn)
+  (print-board)
+  (displayln "")
+  (cond [(= turn PLAYER) (begin (define user-positions (user-turn)) (if (is-winning-move board PLAYER_PIECE (first user-positions) (second user-positions)) (print "Gana el jugador") (main 1)))]
+        [(= turn IA) (begin (define ai-positions (ai-turn)) (if (is-winning-move board AI_PIECE (first ai-positions) (second ai-positions)) (print "Gana la maquina") (main 0)))]))
+
+
