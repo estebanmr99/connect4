@@ -1,4 +1,5 @@
-#lang racket
+#lang racket/gui
+(require racket/draw)
 
 ;; Constantes para el funcionamiento general del juego 
 (define ROW_COUNT 6)
@@ -6,6 +7,7 @@
 
 (define PLAYER 0)
 (define IA 1)
+(define TURN 0)
 
 (define EMPTY 0)
 (define PLAYER_PIECE 1)
@@ -339,34 +341,120 @@
         [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-locations) valid-locations)]
         [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
 
-(define (while condition body turn)
-  (when (condition)
-    (body turn)
-    (while condition body)))
-
-(define (ask)
-  (print "Columna: ")
-    (define col (read-line (current-input-port) 'any))
-  (string->number col))
-
-(define (user-turn)
-  (define user-col (ask))
-  (define user-row (get-next-open-row board user-col))
-  (if (is-valid-location board user-col)
-      (drop-piece user-row user-col PLAYER_PIECE)
-      ((print "Por favor ingrese una columna valida") (user-turn)))
-  (list user-row user-col))
 
 (define (ai-turn)
-  (define best-move (minimax board 5 MINUS_INF INF 0 0 AI_PIECE))
-  (define ai-row (get-next-open-row board (first best-move)))
-  (drop-piece ai-row (first best-move) AI_PIECE)
-  (list ai-row (first best-move)))
-
-(define (main turn)
-  (print-board)
-  (displayln "")
-  (cond [(= turn PLAYER) (begin (define user-positions (user-turn)) (if (is-winning-move board PLAYER_PIECE (first user-positions) (second user-positions)) (print "Gana el jugador") (main 1)))]
-        [(= turn IA) (begin (define ai-positions (ai-turn)) (if (is-winning-move board AI_PIECE (first ai-positions) (second ai-positions)) (print "Gana la maquina") (main 0)))]))
+  (define best-move (minimax board 6 MINUS_INF INF 0 0 AI_PIECE))
+  (define row (get-next-open-row board (first best-move)))
+  (draw-face bm-dc row (first best-move))
+  (drop-piece row (first best-move) AI_PIECE)
+  (set! TURN PLAYER)
+  (list row (first best-move)))
 
 
+(define image (read-bitmap "background2.jpg"))
+
+; Make a 800 x 650 frame
+(define frame (new frame%
+                   [label "Connect Four"]
+                   [width 800]
+                   [height 650]))
+
+
+(define mode #f);if mode=1, then its one player game , if mode=2 then 2 player
+
+
+; Make the drawing area with a paint callback
+
+(define my-canvas%
+  (class canvas%
+    (define positions (list 0 0))
+    (define/override (on-event event)
+      (cond
+        [(is-winning-move board PLAYER_PIECE (first positions) (second positions)) (send msg set-label "PLAYER wins")]
+        [(is-winning-move board AI_PIECE (first positions) (second positions)) (send msg set-label "AI wins")]
+        [(= (length (get-valid-locations board)) 0) (send msg set-label "It's a tie")]
+        [else (if (= TURN PLAYER)
+                  (set! positions (fun (send event button-down? 'left) (send event get-x)))
+                  (set! positions (ai-turn)))])
+    )   
+    ; Call the superclass init, passing on all init args
+    (super-new)))
+
+(define canvas
+  (new my-canvas%
+       [parent frame]
+       [paint-callback
+        (lambda (canvas dc) (paint dc))]))
+
+; ... pens, brushes, and draw-face are the same as above ...
+
+(define (paint dc) 
+                   
+                   (send dc draw-bitmap face-bitmap 0 0))
+
+; ... pens, brushes, and draw-face are the same as above ...
+
+; Create a 800 x 650 bitmap
+(define face-bitmap (make-object bitmap% 800 650))      ; Create a drawing context for the bitmap
+
+(define bm-dc (make-object bitmap-dc% face-bitmap))     ; A bitmap's initial content is undefined; clear it before drawing
+;(send bm-dc clear)
+
+; Make some pens and brushes
+(define blue-pen (make-object pen% "GREY" 4 'solid))
+(define blue-pen1 (make-object pen% "GREY" 10 'solid))
+(define no-brush (make-object brush% "BLACK" 'transparent))
+
+(define yellow-brush (make-object brush% "YELLOW" 'solid))
+(define red-brush (make-object brush% "RED" 'solid))
+
+; Define a procedure to draw a face
+(define player 0);if player=0 its red's turn else yellow's
+(send bm-dc draw-bitmap image 0 0)
+
+(define (draw-face dc r c)
+
+  (send canvas refresh)
+    
+  (send dc set-pen blue-pen)
+  (if(= TURN PLAYER) (begin (send dc set-brush red-brush) (send msg set-label "player1's turn"))
+     (begin (send dc set-brush yellow-brush) (send msg set-label "player2's turn")))
+  (if r (begin (send dc draw-ellipse (+ 120 (* 80 c)) (- 480 (* 80 r)) 80 80))
+      (void)
+      )
+
+  (send dc set-pen blue-pen1)  
+  (send dc set-brush no-brush)
+  (send dc draw-rounded-rectangle 120 80 560 480 10)
+  (define (h-lines n1)
+    (if(= n1 5) (send dc draw-line (+ 200 (* 80 n1)) 80 (+ 200 (* 80 n1)) 560)
+       
+       (begin (send dc draw-line (+ 200 (* 80 n1)) 80 (+ 200 (* 80 n1)) 560) (send dc draw-line 120 (+ 160 (* 80 n1)) 680 (+ 160 (* 80 n1))) (h-lines (add1 n1)))))
+  (h-lines 0))
+
+
+; Show the frame
+(send frame show #t)
+
+(define msg (new message% [parent frame]
+                 [label "No events so far..."]))
+
+
+(define (fun click? mouse-x)
+  (if click? (begin (let* ([c (cond [(and (>= mouse-x 120) (< mouse-x 200)) 0]
+                             [(and (>= mouse-x 200) (< mouse-x 280)) 1]
+                             [(and (>= mouse-x 280) (< mouse-x 360)) 2]
+                             [(and (>= mouse-x 360) (< mouse-x 440)) 3]
+                             [(and (>= mouse-x 440) (< mouse-x 520)) 4]
+                             [(and (>= mouse-x 520) (< mouse-x 600)) 5]
+                             [(and (>= mouse-x 600) (< mouse-x 680)) 6])]
+                    [r (get-next-open-row board c)]
+                    )
+               (if (void? r) (set! r #f) (begin (draw-face bm-dc r c) (user-turn r c)))))
+      (begin (draw-face bm-dc #f #f) (list 0 0))))
+
+
+(define (user-turn row col)
+  (drop-piece row col PLAYER_PIECE)
+  (set! TURN IA)
+  (list row col))
