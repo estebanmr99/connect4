@@ -7,7 +7,7 @@
 
 (define PLAYER 0)
 (define IA 1)
-(define TURN 0)
+(define TURN 1)
 
 (define EMPTY 0)
 (define PLAYER_PIECE 1)
@@ -285,7 +285,7 @@
     Retorna: list
 |#
 (define (get-valid-locations board)
-   (get-valid-locations-aux board 0))
+   (get-valid-locations-aux board (list 3 2 4 1 5 0 6)))
 
 #| 
   Funcion: Auxiliar para ayudar a get-valid-locations con el conteo de 0 hasta COLUMN_COUNT.
@@ -293,9 +293,9 @@
     Retorna: list
 |#
 (define (get-valid-locations-aux board col)
-  (cond [(= col COLUMN_COUNT) '()]
-        [(is-valid-location board col) (append (get-valid-locations-aux board (add1 col)) (list col))]
-        [else (get-valid-locations-aux board (add1 col))]))
+  (cond [(empty? col) '()]
+        [(is-valid-location board (first col)) (append (get-valid-locations-aux board (rest col)) (list (first col)))]
+        [else (get-valid-locations-aux board (rest col))]))
 
 
 (define (random-choice list)
@@ -342,13 +342,31 @@
         [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
 
 
+(define first-turn #t)
+(define (first-turn-move)
+  (cond
+    [(> (count (get-row board 0) PLAYER_PIECE) 0)
+     (cond [(= (get-element board 0 1) PLAYER_PIECE) (list 0 2)]
+           [(= (get-element board 0 5) PLAYER_PIECE) (list 0 4)]
+           [else (list (get-next-open-row board 3) 3)])]
+    [else (list 0 3)]))
+
+
 (define (ai-turn)
-  (define best-move (minimax board 6 MINUS_INF INF 0 0 AI_PIECE))
-  (define row (get-next-open-row board (first best-move)))
-  (draw-face bm-dc row (first best-move))
-  (drop-piece row (first best-move) AI_PIECE)
-  (set! TURN PLAYER)
-  (list row (first best-move)))
+  (cond
+    [(equal? first-turn #t) (set! first-turn #f)
+                            (define positions (first-turn-move))
+                            (draw-face bm-dc (first positions) (second positions))
+                            (drop-piece (first positions) (second positions) AI_PIECE)
+                            (set! TURN PLAYER)
+                            positions]
+    [else
+     (define best-move (minimax board 6 MINUS_INF INF 0 0 AI_PIECE))
+     (define row (get-next-open-row board (first best-move)))
+     (draw-face bm-dc row (first best-move))
+     (drop-piece row (first best-move) AI_PIECE)
+     (set! TURN PLAYER)
+     (list row (first best-move))]))
 
 
 (define image (read-bitmap "background2.jpg"))
