@@ -7,7 +7,8 @@
 
 (define PLAYER 0)
 (define IA 1)
-(define TURN 1)
+(define TURN 0)
+(define DEPTH 6)
 
 (define EMPTY 0)
 (define PLAYER_PIECE 1)
@@ -25,14 +26,6 @@
                     (list 0 0 0 0 0 0 0)
                     (list 0 0 0 0 0 0 0)
                     (list 0 0 0 0 0 0 0)))
-;(list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0))
-;(list (list 1 2 1 2 1 2 1) (list 2 1 2 1 2 1 2) (list 1 2 1 2 1 2 1) (list 1 2 1 2 1 2 1) (list 2 1 2 1 2 1 2) (list 1 2 1 2 1 2 1))
-#|(define board (list (list 2 2 1 2 1 2 1)
-                    (list 1 1 2 1 2 1 2)
-                    (list 1 2 1 1 1 2 1)
-                    (list 1 2 2 2 1 2 1)
-                    (list 2 1 2 2 2 1 2)
-                    (list 0 0 1 2 0 2 2)))|#
 
 #| 
   Funcion: Retorna el valor que se encuentra en una fila y columna en una matriz.
@@ -207,30 +200,66 @@
   score)
 
 
-
+#|
+  Funcion: Dado un tablero y un numero de columna del mismo, agrupa los valores de esa columna
+           en una lista y la retona.
+    Parametros: matrix, int
+    Retorna: list
+|#
 (define (get-column board col)
   (get-column-aux board col 0))
 
+
+#|
+  Funcion: Funcion auxiliar para obtener una columna especifica en un tablero
+    Parametros: matrix, int, int
+    Retorna: list
+|#
 (define (get-column-aux board col row)
   (cond [(>= col COLUMN_COUNT) empty]
         [(>= row ROW_COUNT) empty]
         [else (cons (get-element board row col) (get-column-aux board col (add1 row)))])
   )
 
+#|
+  Funcion: Dado un tablero y un numero de fila del mismo, agrupa los valores de esa fila
+           en una lista y la retona.
+    Parametros: matrix, int
+    Retorna: list
+|#
 (define (get-row board row)
   (cond [(< row 0) empty]
         [(= row 0) (first board)]
         [else (get-row (rest board) (- row 1))]))
 
+#|
+  Funcion: Dado un tablero y un numero de fila y columna del mismo, agrupa los valores de
+           la diagonal a la que corresponde la posicion inicial recibida en una lista y la retona.
+           Solo retorna diagonales cuyas posiciones siempre aumenten conforme se forma la misma.
+    Parametros: matrix, int, int
+    Retorna: list
+|#
 (define (get-diagonal board row col)
   (cond [(>= col COLUMN_COUNT) empty]
         [(>= row ROW_COUNT) empty]
         [else (cons (get-element board row col) (get-diagonal board (add1 row) (add1 col)))]))
 
+#|
+  Funcion: Dado un tablero, se encarga de formar el espejo del mismo y retornarlo.
+    Parametros: matrix
+    Retorna: matrix
+|#
 (define (mirror-board board)
   (cond [(empty? board) empty]
         [else (cons (reverse (first board)) (mirror-board (rest board)))]))
 
+#|
+  Funcion: Dada una lista, un inicio y un largo, obtiene un segmento de la lista
+           desde el indice de inicio que se indica y a partir de este la cantidad de
+           elementros que indica el largo
+    Parametros: list, int, int
+    Retorna: list
+|#
 (define (slice list start length)
   (cond [(< start 0) empty]
         [(<= length 0) empty]
@@ -238,8 +267,12 @@
         [(= start 0) (cons (first list) (slice (rest list) start (- length 1)))]
         [else (slice (rest list) (- start 1) length)]))
 
-;row y col deben empezar en cero
-;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0)) = 117
+#|
+  Funcion: Obtiene el puntaje de todas las filas del tablero que recibe, usando la funcion Eval del sistema.
+           Este puntaje se calcula con una pieza en especifico. Debe recibir la fila y la columna como ceros. 
+    Parametros: matrix, int, int, int
+    Retorna: int
+|#
 (define (horizontal-score board piece row col)
   (cond [(>= row ROW_COUNT) 0]
         [(>= col (- COLUMN_COUNT 3)) (horizontal-score board piece (add1 row) 0)]
@@ -247,8 +280,12 @@
                (evaluate-window (slice (get-row board row) col WINDOW_LENGTH) piece)
                (horizontal-score board piece row (add1 col)))]))
 
-;row y col deben empezar en cero
-;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 0 0 0 0 0)) = 18
+#|
+  Funcion: Obtiene el puntaje de todas las columnas del tablero que recibe, usando la funcion Eval del sistema.
+           Este puntaje se calcula con una pieza en especifico. Debe recibir la fila y la columna como ceros. 
+    Parametros: matrix, int, int, int
+    Retorna: int
+|#
 (define (vertical-score board piece row col)
   (cond [(>= col COLUMN_COUNT) 0]
         [(>= row (- ROW_COUNT 3)) (vertical-score board piece 0 (add1 col))]
@@ -257,8 +294,13 @@
                (vertical-score board piece (add1 row) col))]))
 
 
-;ejemplo: (list (list 0 0 0 0 0 0) (list 0 0 0 0 0 0) (list 0 1 1 1 1 0) (list 0 0 1 1 1 2) (list 1 1 1 1 1 1) (list 0 0 0 0 0 2) (list 0 0 0 0 0 0)) = 26
-;(list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 1 1 1 1 0 0) (list 0 0 1 1 1 2 0) (list 1 1 1 1 1 1 0) (list 0 0 0 0 0 2 0))=29
+#|
+  Funcion: Obtiene el puntaje de todas las diagonales del tablero que recibe, usando la funcion Eval del sistema.
+           Solo obtiene el puntaje de diagonales cuyas posiciones siempre aumenten conforme se forma la misma.
+           Este puntaje se calcula con una pieza en especifico. Debe recibir la fila y la columna como ceros. 
+    Parametros: matrix, int, int, int
+    Retorna: int
+|#
 (define (diagonal-score board piece row col)
   (cond [(>= row (- ROW_COUNT 3)) 0]
         [(>= col (- COLUMN_COUNT 3)) (diagonal-score board piece (add1 row) 0)]
@@ -266,7 +308,15 @@
                (evaluate-window (slice (get-diagonal board row col) 0 WINDOW_LENGTH) piece)
                (diagonal-score board piece row (add1 col)))]))
 
-;ejemplo: (list (list 0 0 0 0 0 0 0) (list 0 0 0 0 0 0 0) (list 0 1 1 1 1 0 0) (list 0 0 1 1 1 2 0) (list 1 1 1 1 1 1 0) (list 0 0 0 0 0 2 0)) = 532
+#|
+  Funcion: Obtiene el puntaje completo del tablero que recibe (filas, columnas y diagonales), usando la funcion Eval del sistema.
+           Para obtener los puntajes de ambas diagonales unas de ellas se calculan convirtiendo
+           el tablero en un espejo del mismo.
+           A la columna del centro se le multiplica el puntaje porque tiene mejor impacto en promedio en las jugadas que otras posiciones.
+           Este puntaje se calcula con una pieza en especifico.
+    Parametros: matrix, int
+    Retorna: int
+|#
 (define (score-position board piece)
   (+
    (+
@@ -297,11 +347,21 @@
         [(is-valid-location board (first col)) (append (get-valid-locations-aux board (rest col)) (list (first col)))]
         [else (get-valid-locations-aux board (rest col))]))
 
-
+#|
+  Funcion: Obtiene un elemento aleatorio de la lista que recibe.
+    Parametros: list
+    Retorna: any
+|#
 (define (random-choice list)
   (list-ref list (random (length list))))
 
-
+#|
+  Funcion: Obtiene un numero de columna del tablero que representa el mejor movimiento para
+           el jugador que se encarga de maximizar su puntaje. Esto lo hace utilizando la funcion de
+           minimax con poda alfa-beta. 
+    Parametros: matrix, int, int, int, int, int, int, list
+    Retorna: int
+|#
 (define (check-pos-max board depth alpha beta maximize max-value max-col valid-locations)
   (cond [(empty? valid-locations) (list max-col max-value)]
         [(>= alpha beta) (list max-col max-value)]
@@ -316,7 +376,13 @@
              (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize (second new-value) col (rest valid-locations))
              (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize max-value max-col (rest valid-locations)))]))
 
-
+#|
+  Funcion: Obtiene un numero de columna del tablero que representa el mejor movimiento para
+           el jugador que se encarga de minimizar su puntaje. Esto lo hace utilizando la funcion de
+           minimax con poda alfa-beta. 
+    Parametros: matrix, int, int, int, int, int, int, list
+    Retorna: int
+|#
 (define (check-pos-min board depth alpha beta maximize max-value max-col valid-locations)
   (cond [(empty? valid-locations) (list max-col max-value)]
         [(>= alpha beta) (list max-col max-value)]
@@ -331,7 +397,19 @@
              (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize (second new-value) col (rest valid-locations))
              (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize max-value max-col (rest valid-locations)))]))
 
-
+#|
+  Funcion: Funcion principal de minimax que se encarga de obtener la columna de la mejor jugada
+            para la IA segun el puntaje maximo que obtenga. Forma un arbol de minimax con la 
+            profundidad que recibe por parametro, dependiendo de la profundidad y del avance del juego
+            puede sacar solo un puntaje que puede no ser 100% acertado, así como puede obtener el movimiento
+            que podría llevar al gane.
+            Maximiza el puntaje de la IA y minimiza el del oponente, así se simula que los dos estén jugando
+            su mejor jugada para poder derrotar al otro, con lo que se obtiene el mejor movimiento para la IA.
+            Usa poda alpha-beta.
+            Retorna una lista con el numero de columna y el puntaje correspondiente.
+    Parametros: matrix, int, int, int, int, int, int
+    Retorna: list
+|#
 (define (minimax board depth alpha beta row col maximize)
   (define valid-locations (get-valid-locations board))
   (cond [(= depth 0) (list "-" (score-position board AI_PIECE))]
@@ -341,7 +419,11 @@
         [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-locations) valid-locations)]
         [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
 
-
+#|
+  Funcion: Obtiene el movimiento (fila columna) que debe realizar la IA en su primer turno para maximizar su puntaje.
+    Parametros: N/A
+    Retorna: list
+|#
 (define first-turn #t)
 (define (first-turn-move)
   (cond
@@ -352,6 +434,14 @@
     [else (list 0 3)]))
 
 
+#|
+  Funcion: Obtiene el movimiento (fila columna) que debe realizar la IA para maximizar su puntaje.
+           En esta funcion se llama a minimax para que realice el calculo, con excepcion del primer
+           turno que siempre tiene una posicion fija que se sabe que es la mejor.
+           En esta funcion también se realiza el cambio de turno.
+    Parametros: N/A
+    Retorna: list
+|#
 (define (ai-turn)
   (cond
     [(equal? first-turn #t) (set! first-turn #f)
@@ -359,30 +449,51 @@
                             (draw-face bm-dc (first positions) (second positions))
                             (drop-piece (first positions) (second positions) AI_PIECE)
                             (set! TURN PLAYER)
+                            (send msg set-label "User turn")
                             positions]
     [else
-     (define best-move (minimax board 6 MINUS_INF INF 0 0 AI_PIECE))
+     (define best-move (minimax board DEPTH MINUS_INF INF 0 0 AI_PIECE))
      (define row (get-next-open-row board (first best-move)))
      (draw-face bm-dc row (first best-move))
      (drop-piece row (first best-move) AI_PIECE)
      (set! TURN PLAYER)
+     (send msg set-label "User turn")
      (list row (first best-move))]))
 
+#|
+  Funcion: Coloca en el tablero de juego la ficha del usuario en la posicion que recibe por parametro.
+            Cambia de turno.
+    Parametros: int, int
+    Retorna: list
+|#
+(define (user-turn row col)
+  (drop-piece row col PLAYER_PIECE)
+  (set! TURN IA)
+  (send msg set-label "IA turn")
+  (list row col))
 
+;------------------ Interfaz Gráfica de Usuario ----------------------------------------
+;---------------------------------------------------------------------------------------
+
+;Imagen que se establece como el fondo del tablero del juego.
 (define image (read-bitmap "background2.jpg"))
 
-; Make a 800 x 650 frame
+;Cuadro de 800 x 650 para montar la interfaz del juego
 (define frame (new frame%
                    [label "Connect Four"]
                    [width 800]
                    [height 650]))
 
 
-(define mode #f);if mode=1, then its one player game , if mode=2 then 2 player
-
-
-; Make the drawing area with a paint callback
-
+#|
+  Funcion: Genera el area de dibujo (canvas) para pintar el tablero.
+            Es la funcion encargada de inicar el sistema, por lo que se podría considerar 
+            la funcion principal (main). Determina cuando gana un jugador, cuando hay un empate y termina 
+            el juego o llama a las funciones correspondientes segun de quien sea el turno para que juegue
+            ya sea la IA o el usuario.
+    Parametros: N/A
+    Retorna: N/A
+|#
 (define my-canvas%
   (class canvas%
     (define positions (list 0 0))
@@ -398,45 +509,56 @@
     ; Call the superclass init, passing on all init args
     (super-new)))
 
+#|
+Se rea un canvas del tipo my-canvas declarado previamente. Asigna el cuadro que ha sido declarado
+anteriormente, como padre para que el canvas se muestre en dicho cuadro.
+|#
 (define canvas
   (new my-canvas%
        [parent frame]
        [paint-callback
         (lambda (canvas dc) (paint dc))]))
 
-; ... pens, brushes, and draw-face are the same as above ...
+#|
+Se define el contexto de dibujo (drawing context) para el tablero.
+|#
+(define (paint dc)
+  (send dc draw-bitmap face-bitmap 0 0))
 
-(define (paint dc) 
-                   
-                   (send dc draw-bitmap face-bitmap 0 0))
 
-; ... pens, brushes, and draw-face are the same as above ...
+#| 
+Se crea un bitmap de 800 x 650 para poder dibujar el tablero guiandose con los pixeles
+|#
+(define face-bitmap (make-object bitmap% 800 650))
 
-; Create a 800 x 650 bitmap
-(define face-bitmap (make-object bitmap% 800 650))      ; Create a drawing context for the bitmap
+;Se crea un contexto de dibujo para un bitmap 
+(define bm-dc (make-object bitmap-dc% face-bitmap))    
 
-(define bm-dc (make-object bitmap-dc% face-bitmap))     ; A bitmap's initial content is undefined; clear it before drawing
-;(send bm-dc clear)
 
-; Make some pens and brushes
+;Lapiceros y brochas utilizadas para dibujar el ambiente grafico
 (define blue-pen (make-object pen% "GREY" 4 'solid))
 (define blue-pen1 (make-object pen% "GREY" 10 'solid))
 (define no-brush (make-object brush% "BLACK" 'transparent))
-
 (define yellow-brush (make-object brush% "YELLOW" 'solid))
 (define red-brush (make-object brush% "RED" 'solid))
 
-; Define a procedure to draw a face
-(define player 0);if player=0 its red's turn else yellow's
+; Llamada al procedimiento para dibujar el bitmap y montar la imagen de fondo
 (send bm-dc draw-bitmap image 0 0)
 
+#|
+  Funcion: Se encarga de dibujar las fichas y las lineas que delimitan el tablero de juego.
+            Segun el turno del jugador actual dibuja una ficha amarilla (IA) o roja (usuario), 
+            esto en la posicion de la fila y columna que se indica por parametro. 
+    Parametros: drawing context, int, int
+    Retorna: N/A
+|#
 (define (draw-face dc r c)
 
   (send canvas refresh)
     
   (send dc set-pen blue-pen)
-  (if(= TURN PLAYER) (begin (send dc set-brush red-brush) (send msg set-label "player1's turn"))
-     (begin (send dc set-brush yellow-brush) (send msg set-label "player2's turn")))
+  (if (= TURN PLAYER) (begin (send dc set-brush red-brush))
+     (begin (send dc set-brush yellow-brush)))
   (if r (begin (send dc draw-ellipse (+ 120 (* 80 c)) (- 480 (* 80 r)) 80 80))
       (void)
       )
@@ -451,13 +573,24 @@
   (h-lines 0))
 
 
-; Show the frame
+; Instruccion para mostrar el cuadro o ventana de juego
 (send frame show #t)
 
+; Mensaje para mostrar en la ventana de juego
 (define msg (new message% [parent frame]
-                 [label "No events so far..."]))
+                 [label "Loading board..."]))
 
-
+#|
+  Funcion: Se encarga de captar los eventos de click en la ventana. Segun sea
+            la posicion en la ventana donde se hizo click, obtiene las coordenadas y las 
+            traduce en una posicion de columna. A partir de esta columna obtiene una fila
+            válida para poder colocar la ficha y las retorna, si no hay una posicion valida para la columna retorna
+            valores en cero y el programa se mantiene esperando a que se haga una jugada valida.
+            Si la posicion es valida llama a la funcion encargada de dibujar la ficha y a la encargada
+            de llevar a cabo la jugada del usuario en el tablero almacenado y cambiar de turno.
+    Parametros: mouse-event%, mouse-event% 
+    Retorna: list
+|#
 (define (fun click? mouse-x)
   (if click? (begin (let* ([c (cond [(and (>= mouse-x 120) (< mouse-x 200)) 0]
                              [(and (>= mouse-x 200) (< mouse-x 280)) 1]
@@ -471,8 +604,3 @@
                (if (void? r) (set! r #f) (begin (draw-face bm-dc r c) (user-turn r c)))))
       (begin (draw-face bm-dc #f #f) (list 0 0))))
 
-
-(define (user-turn row col)
-  (drop-piece row col PLAYER_PIECE)
-  (set! TURN IA)
-  (list row col))
