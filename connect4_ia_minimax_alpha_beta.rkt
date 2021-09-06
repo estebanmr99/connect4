@@ -1,20 +1,22 @@
 #lang racket/gui
 (require racket/draw)
 
+;Autores: Esteban Mena y Raquel Pinto
+
 ;; Constantes para el funcionamiento general del juego 
 (define ROW_COUNT 6)
 (define COLUMN_COUNT 7)
 
 (define PLAYER 0)
 (define IA 1)
-(define TURN 0)
-(define DEPTH 6)
+(define TURN IA)
+(define DEPTH 7)
 
 (define EMPTY 0)
 (define PLAYER_PIECE 1)
 (define AI_PIECE 2)
 
-(define WINDOW_LENGTH 4)
+(define COMBO_LENGTH 4)
 
 (define MINUS_INF -100000000000000000)
 (define INF 100000000000000000)
@@ -72,7 +74,7 @@
     Parametros: matrix int
     Retorna: bool
 |#
-(define (is-valid-location board col)
+(define (is-valid-position board col)
   (eq? (get-element board (- ROW_COUNT 1) col) 0))
 
 #| 
@@ -185,17 +187,17 @@
     Parametros: list, int
     Retorna: int
 |#
-(define (evaluate-window window piece)
+(define (evaluate-combo combo piece)
   (define score 0)
   (define opp_piece PLAYER_PIECE)
 
   (cond [(= piece PLAYER_PIECE) (set! opp_piece AI_PIECE)])
 
-  (cond [(= (count window piece) 4) (set! score (+ score 100))]
-        [(and (= (count window piece) 3) (= (count window EMPTY) 1)) (set! score (+ score 5))]
-        [(and (= (count window piece) 2) (= (count window EMPTY) 2)) (set! score (+ score 2))])
+  (cond [(= (count combo piece) 4) (set! score (+ score 100))]
+        [(and (= (count combo piece) 3) (= (count combo EMPTY) 1)) (set! score (+ score 5))]
+        [(and (= (count combo piece) 2) (= (count combo EMPTY) 2)) (set! score (+ score 2))])
 
-  (cond [(and (= (count window opp_piece) 3) (= (count window EMPTY) 1)) (set! score (- score 4))])
+  (cond [(and (= (count combo opp_piece) 3) (= (count combo EMPTY) 1)) (set! score (- score 4))])
 
   score)
 
@@ -277,7 +279,7 @@
   (cond [(>= row ROW_COUNT) 0]
         [(>= col (- COLUMN_COUNT 3)) (horizontal-score board piece (add1 row) 0)]
         [else (+
-               (evaluate-window (slice (get-row board row) col WINDOW_LENGTH) piece)
+               (evaluate-combo (slice (get-row board row) col COMBO_LENGTH) piece)
                (horizontal-score board piece row (add1 col)))]))
 
 #|
@@ -290,7 +292,7 @@
   (cond [(>= col COLUMN_COUNT) 0]
         [(>= row (- ROW_COUNT 3)) (vertical-score board piece 0 (add1 col))]
         [else (+
-               (evaluate-window (slice (get-column board col) row WINDOW_LENGTH) piece)
+               (evaluate-combo (slice (get-column board col) row COMBO_LENGTH) piece)
                (vertical-score board piece (add1 row) col))]))
 
 
@@ -305,7 +307,7 @@
   (cond [(>= row (- ROW_COUNT 3)) 0]
         [(>= col (- COLUMN_COUNT 3)) (diagonal-score board piece (add1 row) 0)]
         [else (+
-               (evaluate-window (slice (get-diagonal board row col) 0 WINDOW_LENGTH) piece)
+               (evaluate-combo (slice (get-diagonal board row col) 0 COMBO_LENGTH) piece)
                (diagonal-score board piece row (add1 col)))]))
 
 #|
@@ -334,18 +336,18 @@
     Parametros: matrix
     Retorna: list
 |#
-(define (get-valid-locations board)
-   (get-valid-locations-aux board (list 3 2 4 1 5 0 6)))
+(define (get-valid-positions board)
+   (get-valid-positions-aux board (list 3 2 4 1 5 0 6)))
 
 #| 
-  Funcion: Auxiliar para ayudar a get-valid-locations con el conteo de 0 hasta COLUMN_COUNT.
+  Funcion: Auxiliar para ayudar a get-valid-positions con el conteo de 0 hasta COLUMN_COUNT.
     Parametros: matrix int
     Retorna: list
 |#
-(define (get-valid-locations-aux board col)
+(define (get-valid-positions-aux board col)
   (cond [(empty? col) '()]
-        [(is-valid-location board (first col)) (append (get-valid-locations-aux board (rest col)) (list (first col)))]
-        [else (get-valid-locations-aux board (rest col))]))
+        [(is-valid-position board (first col)) (append (get-valid-positions-aux board (rest col)) (list (first col)))]
+        [else (get-valid-positions-aux board (rest col))]))
 
 #|
   Funcion: Obtiene un elemento aleatorio de la lista que recibe.
@@ -362,19 +364,19 @@
     Parametros: matrix, int, int, int, int, int, int, list
     Retorna: int
 |#
-(define (check-pos-max board depth alpha beta maximize max-value max-col valid-locations)
-  (cond [(empty? valid-locations) (list max-col max-value)]
+(define (check-pos-max board depth alpha beta maximize max-value max-col valid-positions)
+  (cond [(empty? valid-positions) (list max-col max-value)]
         [(>= alpha beta) (list max-col max-value)]
         [else
-         (define col (first valid-locations))
+         (define col (first valid-positions))
          (define row (get-next-open-row board col))
          (define new-value (minimax
                             (set-element board row col maximize)
                             (- depth 1)
                             alpha beta row col (if (= maximize AI_PIECE) PLAYER_PIECE AI_PIECE)))
          (if (> (second new-value) max-value)
-             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize (second new-value) col (rest valid-locations))
-             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize max-value max-col (rest valid-locations)))]))
+             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize (second new-value) col (rest valid-positions))
+             (check-pos-max board depth (max alpha (second new-value) max-value) beta maximize max-value max-col (rest valid-positions)))]))
 
 #|
   Funcion: Obtiene un numero de columna del tablero que representa el mejor movimiento para
@@ -383,19 +385,19 @@
     Parametros: matrix, int, int, int, int, int, int, list
     Retorna: int
 |#
-(define (check-pos-min board depth alpha beta maximize max-value max-col valid-locations)
-  (cond [(empty? valid-locations) (list max-col max-value)]
+(define (check-pos-min board depth alpha beta maximize max-value max-col valid-positions)
+  (cond [(empty? valid-positions) (list max-col max-value)]
         [(>= alpha beta) (list max-col max-value)]
         [else
-         (define col (first valid-locations))
+         (define col (first valid-positions))
          (define row (get-next-open-row board col))
          (define new-value (minimax
                             (set-element board row col maximize)
                             (- depth 1)
                             alpha beta row col (if (= maximize AI_PIECE) PLAYER_PIECE AI_PIECE)))
          (if (< (second new-value) max-value)
-             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize (second new-value) col (rest valid-locations))
-             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize max-value max-col (rest valid-locations)))]))
+             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize (second new-value) col (rest valid-positions))
+             (check-pos-min board depth alpha (min beta (second new-value) max-value) maximize max-value max-col (rest valid-positions)))]))
 
 #|
   Funcion: Funcion principal de minimax que se encarga de obtener la columna de la mejor jugada
@@ -411,13 +413,13 @@
     Retorna: list
 |#
 (define (minimax board depth alpha beta row col maximize)
-  (define valid-locations (get-valid-locations board))
+  (define valid-positions (get-valid-positions board))
   (cond [(= depth 0) (list "-" (score-position board AI_PIECE))]
         [(is-winning-move board AI_PIECE row col) '("-" 100000000000000)]
         [(is-winning-move board PLAYER_PIECE row col) '("-" -100000000000000)]
-        [(= (length valid-locations) 0) '("-" 0)] ;game over, no more valid moves
-        [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-locations) valid-locations)]
-        [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-locations) valid-locations)]))
+        [(= (length valid-positions) 0) '("-" 0)] ;game over, no more valid moves
+        [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-positions) valid-positions)]
+        [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-positions) valid-positions)]))
 
 #|
   Funcion: Obtiene el movimiento (fila columna) que debe realizar la IA en su primer turno para maximizar su puntaje.
@@ -446,7 +448,7 @@
   (cond
     [(equal? first-turn #t) (set! first-turn #f)
                             (define positions (first-turn-move))
-                            (draw-face bm-dc (first positions) (second positions))
+                            (draw-board bm-dc (first positions) (second positions))
                             (drop-piece (first positions) (second positions) AI_PIECE)
                             (set! TURN PLAYER)
                             (send msg set-label "User turn")
@@ -454,7 +456,7 @@
     [else
      (define best-move (minimax board DEPTH MINUS_INF INF 0 0 AI_PIECE))
      (define row (get-next-open-row board (first best-move)))
-     (draw-face bm-dc row (first best-move))
+     (draw-board bm-dc row (first best-move))
      (drop-piece row (first best-move) AI_PIECE)
      (set! TURN PLAYER)
      (send msg set-label "User turn")
@@ -469,7 +471,7 @@
 (define (user-turn row col)
   (drop-piece row col PLAYER_PIECE)
   (set! TURN IA)
-  (send msg set-label "IA turn")
+  (send msg set-label "AI turn")
   (list row col))
 
 ;------------------ Interfaz Gráfica de Usuario ----------------------------------------
@@ -501,9 +503,10 @@
       (cond
         [(is-winning-move board PLAYER_PIECE (first positions) (second positions)) (send msg set-label "PLAYER wins")]
         [(is-winning-move board AI_PIECE (first positions) (second positions)) (send msg set-label "AI wins")]
-        [(= (length (get-valid-locations board)) 0) (send msg set-label "It's a tie")]
+        [(= (length (get-valid-positions board)) 0) (send msg set-label "It's a tie")]
         [else (if (= TURN PLAYER)
-                  (set! positions (fun (send event button-down? 'left) (send event get-x)))
+                  (set! positions (user-event (send event button-down? 'left) (send event get-x)))
+                  ;(set! positions (ai2-turn))
                   (set! positions (ai-turn)))])
     )   
     ; Call the superclass init, passing on all init args
@@ -523,21 +526,21 @@ anteriormente, como padre para que el canvas se muestre en dicho cuadro.
 Se define el contexto de dibujo (drawing context) para el tablero.
 |#
 (define (paint dc)
-  (send dc draw-bitmap face-bitmap 0 0))
+  (send dc draw-bitmap board-bitmap 0 0))
 
 
 #| 
 Se crea un bitmap de 800 x 650 para poder dibujar el tablero guiandose con los pixeles
 |#
-(define face-bitmap (make-object bitmap% 800 650))
+(define board-bitmap (make-object bitmap% 800 650))
 
 ;Se crea un contexto de dibujo para un bitmap 
-(define bm-dc (make-object bitmap-dc% face-bitmap))    
+(define bm-dc (make-object bitmap-dc% board-bitmap))    
 
 
 ;Lapiceros y brochas utilizadas para dibujar el ambiente grafico
-(define blue-pen (make-object pen% "GREY" 4 'solid))
-(define blue-pen1 (make-object pen% "GREY" 10 'solid))
+(define black-pen (make-object pen% "BLACK" 4 'solid))
+(define black-pen1 (make-object pen% "BLACK" 10 'solid))
 (define no-brush (make-object brush% "BLACK" 'transparent))
 (define yellow-brush (make-object brush% "YELLOW" 'solid))
 (define red-brush (make-object brush% "RED" 'solid))
@@ -552,18 +555,18 @@ Se crea un bitmap de 800 x 650 para poder dibujar el tablero guiandose con los p
     Parametros: drawing context, int, int
     Retorna: N/A
 |#
-(define (draw-face dc r c)
+(define (draw-board dc r c)
 
   (send canvas refresh)
     
-  (send dc set-pen blue-pen)
+  (send dc set-pen black-pen)
   (if (= TURN PLAYER) (begin (send dc set-brush red-brush))
      (begin (send dc set-brush yellow-brush)))
   (if r (begin (send dc draw-ellipse (+ 120 (* 80 c)) (- 480 (* 80 r)) 80 80))
       (void)
       )
 
-  (send dc set-pen blue-pen1)  
+  (send dc set-pen black-pen1)  
   (send dc set-brush no-brush)
   (send dc draw-rounded-rectangle 120 80 560 480 10)
   (define (h-lines n1)
@@ -591,16 +594,83 @@ Se crea un bitmap de 800 x 650 para poder dibujar el tablero guiandose con los p
     Parametros: mouse-event%, mouse-event% 
     Retorna: list
 |#
-(define (fun click? mouse-x)
-  (if click? (begin (let* ([c (cond [(and (>= mouse-x 120) (< mouse-x 200)) 0]
+(define (user-event click? mouse-x)
+  (if click? (begin (let* ([col (cond [(and (>= mouse-x 120) (< mouse-x 200)) 0]
                              [(and (>= mouse-x 200) (< mouse-x 280)) 1]
                              [(and (>= mouse-x 280) (< mouse-x 360)) 2]
                              [(and (>= mouse-x 360) (< mouse-x 440)) 3]
                              [(and (>= mouse-x 440) (< mouse-x 520)) 4]
                              [(and (>= mouse-x 520) (< mouse-x 600)) 5]
                              [(and (>= mouse-x 600) (< mouse-x 680)) 6])]
-                    [r (get-next-open-row board c)]
+                    [row (get-next-open-row board col)]
                     )
-               (if (void? r) (set! r #f) (begin (draw-face bm-dc r c) (user-turn r c)))))
-      (begin (draw-face bm-dc #f #f) (list 0 0))))
+               (if (void? row) (set! row #f) (begin (draw-board bm-dc row col) (user-turn row col)))))
+      (begin (draw-board bm-dc #f #f) (list 0 0))))
 
+
+;------------------------Experimento 2------------------------------------------------------------------
+;Para probar el experimento descomente la linea en "my-canvas%" donde se llama a (ai-turn2) y comente
+;la linea donde se llama al user-event.
+;-------------------------------------------------------------------------------------------------------
+#|
+  Funcion: Funcion principal de minimax que se encarga de obtener la columna de la mejor jugada
+            para la IA segun el puntaje maximo que obtenga. Forma un arbol de minimax con la 
+            profundidad que recibe por parametro, dependiendo de la profundidad y del avance del juego
+            puede sacar solo un puntaje que puede no ser 100% acertado, así como puede obtener el movimiento
+            que podría llevar al gane.
+            Maximiza el puntaje de la IA y minimiza el del oponente, así se simula que los dos estén jugando
+            su mejor jugada para poder derrotar al otro, con lo que se obtiene el mejor movimiento para la IA.
+            Usa poda alpha-beta.
+            Retorna una lista con el numero de columna y el puntaje correspondiente.
+    Parametros: matrix, int, int, int, int, int, int
+    Retorna: list
+|#
+(define (minimax2 board depth alpha beta row col maximize)
+  (define valid-positions (get-valid-positions board))
+  (cond [(= depth 0) (list "-" (score-position board PLAYER_PIECE))]
+        [(is-winning-move board AI_PIECE row col) '("-" 100000000000000)]
+        [(is-winning-move board PLAYER_PIECE row col) '("-" -100000000000000)]
+        [(= (length valid-positions) 0) '("-" 0)] ;game over, no more valid moves
+        [(= maximize AI_PIECE) (check-pos-max board depth MINUS_INF INF maximize MINUS_INF (random-choice valid-positions) valid-positions)]
+        [(= maximize PLAYER_PIECE) (check-pos-min board depth MINUS_INF INF maximize INF (random-choice valid-positions) valid-positions)]))
+
+#|
+  Funcion: Obtiene el movimiento (fila columna) que debe realizar la IA en su primer turno para maximizar su puntaje.
+    Parametros: N/A
+    Retorna: list
+|#
+(define first-turn2 #t)
+(define (first-turn-move2)
+  (cond
+    [(> (count (get-row board 0) AI_PIECE) 0)
+     (cond [(= (get-element board 0 1) AI_PIECE) (list 0 2)]
+           [(= (get-element board 0 5) AI_PIECE) (list 0 4)]
+           [else (list (get-next-open-row board 3) 3)])]
+    [else (list 0 3)]))
+
+
+#|
+  Funcion: Obtiene el movimiento (fila columna) que debe realizar la IA para maximizar su puntaje.
+           En esta funcion se llama a minimax para que realice el calculo, con excepcion del primer
+           turno que siempre tiene una posicion fija que se sabe que es la mejor.
+           En esta funcion también se realiza el cambio de turno.
+    Parametros: N/A
+    Retorna: list
+|#
+(define (ai2-turn)
+  (cond
+    [(equal? first-turn2 #t) (set! first-turn2 #f)
+                            (define positions (first-turn-move2))
+                            (draw-board bm-dc (first positions) (second positions))
+                            (drop-piece (first positions) (second positions) PLAYER_PIECE)
+                            (set! TURN IA)
+                            (send msg set-label "Other AI turn")
+                            positions]
+    [else
+     (define best-move (minimax2 board DEPTH MINUS_INF INF 0 0 PLAYER_PIECE))
+     (define row (get-next-open-row board (first best-move)))
+     (draw-board bm-dc row (first best-move))
+     (drop-piece row (first best-move) PLAYER_PIECE)
+     (set! TURN IA)
+     (send msg set-label "Other AI turn")
+     (list row (first best-move))]))
